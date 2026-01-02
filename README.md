@@ -1,3 +1,61 @@
+
+# Upstox Intraday Momentum Algo
+
+A production‑ready Python framework for **intraday momentum trading** on **NSE EQ, F&O, and Nifty/BankNifty options** via **Upstox** APIs.
+
+**Highlights**
+- **Data**: LTPC mode over **Market Data Feed V3** (WebSocket + Protobuf)
+- **Strategy**: EMA‑based momentum on 1‑minute bars (customizable)
+- **Risk**: Max portfolio drawdown **4%**, **1% risk per trade**
+- **Exits**: Server‑side **GTT** (ENTRY/TARGET/STOP, optional trailing) or **exchange SL/SL‑M + LIMIT TP** with OCO via Portfolio Stream
+- **Ops**: **Auto square‑off @ 15:12 IST**, daily **BOD instruments** refresh (lot/tick enforcement), OAuth helper
+- **Modes**: **Paper**, **Backtest**, **Live** (sandbox → real)
+- **Tooling**: Mode switch CLI, validation script, schedulers (**cron/systemd/Windows**), **GitHub Actions CI** at **08:50 IST**
+
+## Why this repo?
+Intraday momentum requires low‑latency data, clean risk boundaries, and reliable exits even when clients disconnect. This framework wires Upstox’s latest APIs end‑to‑end: lightweight LTPC streaming, robust order management (GTT or SL/SL‑M), portfolio stream for real‑time OCO, and a daily instrument master workflow so lot/tick rules are always respected.
+
+## Core Features
+- **Market Data V3 (LTPC)**: WebSocket + Protobuf decoding for efficient tick ingestion  
+- **Bar Aggregation**: 1‑min OHLC driven by LTPC ticks  
+- **Strategy Module**: Pluggable EMA momentum with configurable SL/TP  
+- **Risk Manager**: High‑water mark drawdown and per‑trade sizing (1% risk)  
+- **Order Flow**:  
+  - **GTT multi‑leg** (ENTRY/TARGET/STOP, optional trailing)  
+  - **SL/SL‑M + LIMIT TP** (exchange orders) with **OCO** via Portfolio Stream  
+- **Daily Instruments (BOD)**: Loader + enforcement for **lot_size**/**tick_size**; ATM strike selection for NIFTY/BANKNIFTY  
+- **Automation**: cron/systemd/Windows tasks; **CI** refresh + validation  
+- **Utilities**: OAuth helper, mode switch CLI, post‑refresh validator, docs (Markdown + PDF)
+
+## Quick Start
+1. `python -m venv .venv && source .venv/bin/activate`  
+2. `pip install -r upx_algo/requirements.txt`  
+3. Put `MarketDataFeedV3.proto` in `upx_algo/proto` and compile:  
+   `protoc --python_out=upx_algo/proto upx_algo/proto/MarketDataFeedV3.proto`  
+4. `cp upx_algo/.env.sample upx_algo/.env` → set `UPX_API_KEY`, `UPX_API_SECRET`, `UPX_REDIRECT_URI`  
+5. Get access token: `python upx_algo/tools/oauth_get_token.py --open`  
+6. Daily instruments: `python upx_algo/tools/bod_refresh.py --download --update-env --select atm --count 1`  
+7. Validate: `python upx_algo/tools/validate_post_refresh.py`  
+8. Run:  
+   - PAPER: `python upx_algo/tools/mode_switch.py --target paper && python upx_algo/main.py`  
+   - LIVE (sandbox): `python upx_algo/tools/mode_switch.py --target live-sandbox && python upx_algo/main.py`  
+   - LIVE (real): `python upx_algo/tools/mode_switch.py --target live-real && python upx_algo/main.py`
+
+## Scheduling & CI
+- **cron (Linux/macOS)**: `tools/schedule_bod.sh` → 08:50 IST  
+- **systemd (Linux)**: `ops/systemd/upx-bod-refresh.service/.timer`  
+- **Windows Task Scheduler**: `tools/register_bod_task.ps1` or `register_bod_task.bat`  
+- **GitHub Actions**: `.github/workflows/upx-ci.yml` (daily, 08:50 IST).  
+  Set secrets: `UPX_API_KEY`, `UPX_API_SECRET`, `UPX_REDIRECT_URI`, `UPX_ACCESS_TOKEN`.
+
+## Safety & Notes
+- Start in **PAPER** → **LIVE (sandbox)** → **LIVE (real)**  
+- Always use BOD instrument master to honor **lot_size**/**tick_size** and avoid rejections  
+- Keep secrets out of source—use `.env` locally and **GitHub Secrets** for CI  
+- Markets are risky; test thoroughly before live deployment
+
+---
+
 # Upstox Intraday Momentum Algo – Conversation & Setup Notes
 **Saved:** 2026-01-02T14:05:53.262398 (IST)
 This document captures the outcome of our conversation and provides a consolidated, ready‑to‑run guide for the Python algo built for **Upstox** with:
